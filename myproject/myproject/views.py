@@ -1,8 +1,13 @@
 from django.http import JsonResponse
 from django.views.generic import View
+from scrapy.utils.project import get_project_settings
 from scrapy.crawler import CrawlerProcess
+from scrapy.utils.log import configure_logging
+from scrapy import signals
 from scrapers.spiders.desktopbg_spider import ComputerSpider
+from scrapy.signalmanager import dispatcher
 import sqlite3
+
 
 class ComputerListView(View):
     def get(self, request):
@@ -31,7 +36,6 @@ class ComputerListView(View):
         data = []
         for row in results:
             data.append({
-                'url': row[0],
                 'processor': row[1],
                 'gpu': row[2],
                 'motherboard': row[3],
@@ -40,14 +44,33 @@ class ComputerListView(View):
 
         return JsonResponse(data, safe=False)
 
+
 def scrape_desktop_bg(request):
-    process = CrawlerProcess(settings={
-        "FEEDS": {
-            "items.json": {"format": "json"},
-        },
-    })
+    data = []
+    success = {'status': None}
+
+    def item_scraped(item, response, spider):
+        data.append(dict(item))
+
+    def spider_closed(spider, reason):
+        if reason == 'finished':
+            success['status'] = 'success'
+        else:
+            success['status'] = 'failed'
+
+    dispatcher.connect(item_scraped, signal=signals.item_scraped)
+    dispatcher.connect(spider_closed, signal=signals.spider_closed)
+
+    settings = get_project_settings()
+
+    configure_logging(settings)
+
+    process = CrawlerProcess(settings)
+
     process.crawl(ComputerSpider)
     process.start()
-    with open("items.json", "r") as f:
-        data = f.read() 
-    return JsonResponse(data, safe=False)
+
+    if success['status'] == 'success':
+        return JsonResponse({'message': 'Scraping completed successfully!'}, safe=False)
+    else:
+        return JsonResponse({'message': 'Scraping failed!'}, safe=False)
