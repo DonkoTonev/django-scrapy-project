@@ -1,29 +1,25 @@
-# import scrapy
-
-# class HackerNewsSpider(scrapy.Spider):
-#     name = "hacker_news"
-#     start_urls = [
-#         "https://news.ycombinator.com/"
-#     ]
-#     def parse(self, response):
-#         for article in response.css("tr.athing"):
-#             yield {
-#                 "title": article.css("a.storylink::text").get(),
-#                 "url": article.css("a.storylink::attr(href)").get(),
-#                 "votes": int(article.css("span.score::text").re_first(r"\d+"))
-#             }
-#         next_page = response.css("a.morelink::attr(href)").get()
-#         if next_page is not None:
-#             yield response.follow(next_page, self.parse)
-
 import scrapy
 import sqlite3
 import logging
+import jsonschema
+from jsonschema import validate
 
 class ComputerSpider(scrapy.Spider):
     name = "desktop"
     allowed_domains = ["desktop.bg"]
     start_urls = ["https://desktop.bg/"]
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "url": {"type": "string"},
+            "processor": {"type": "string"},
+            "gpu": {"type": "string"},
+            "motherboard": {"type": "string"},
+            "ram": {"type": "string"}
+        },
+        "required": ["url"]
+    }
 
     def __init__(self):
         self.conn = sqlite3.connect('desktop_data.db')
@@ -55,7 +51,20 @@ class ComputerSpider(scrapy.Spider):
         ram_option = response.xpath('//tr[@id="DesktopRam"]/td//div[@class="default-option options"]/label/span/text()').getall()
         ram = ''.join(ram_option).strip() if ram_option else None
 
-        # Check if the product already exists in the database
+        item = {
+            'url': url,
+            'processor': processor.strip() if processor else None,
+            'gpu': gpu.strip() if gpu else None,
+            'motherboard': motherboard.strip() if motherboard else None,
+            'ram': ram if ram_option else None,
+        }
+
+        try:
+            validate(item, self.schema)
+        except jsonschema.exceptions.ValidationError as e:
+            logging.error(f"Item failed validation: {e}")
+            return
+
         self.c.execute("SELECT * FROM products WHERE url=?", (url,))
         existing_product = self.c.fetchone()
 
@@ -72,10 +81,4 @@ class ComputerSpider(scrapy.Spider):
             except sqlite3.Error as e:
                 logging.error(f"Error inserting data into SQLite: {str(e)}")
 
-        yield {
-            'url': url,
-            'processor': processor.strip() if processor else None,
-            'gpu': gpu.strip() if gpu else None,
-            'motherboard': motherboard.strip() if motherboard else None,
-            'ram': ram if ram_option else None,
-        }
+        yield item

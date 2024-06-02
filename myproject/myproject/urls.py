@@ -14,9 +14,11 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.urls import path
-from .views import scrape_hacker_news
+from .views import scrape_desktop_bg, ComputerListView
 
 urlpatterns = [
-    path("scrape-hacker-news/", scrape_hacker_news, name="scrape_hacker_news"),
+    path("scrape-desktop-bg/", scrape_desktop_bg, name="scrape_desktop_bg"),
+    path("computers/", ComputerListView.as_view(), name="computer_list"),
 ]
