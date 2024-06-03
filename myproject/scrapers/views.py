@@ -8,7 +8,6 @@ from scrapy import signals
 from scrapers.spiders.desktopbg_spider import ComputerSpider
 from scrapy.signalmanager import dispatcher
 import sqlite3
-import json
 
 schema = {
     "type": "object",
