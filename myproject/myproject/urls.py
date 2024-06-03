@@ -16,9 +16,9 @@ Including another URLconf
 """
 
 from django.urls import path
-from .views import scrape_desktop_bg, ComputerListView
+from scrapers.views import ScrapingView, ComputerList
 
 urlpatterns = [
-    path("scrape-desktop-bg/", scrape_desktop_bg, name="scrape_desktop_bg"),
-    path("computers/", ComputerListView.as_view(), name="computer_list"),
+    path("scrape-desktop-bg/", ScrapingView.as_view(), name="scrape_desktop_bg"),
+    path("computers/", ComputerList.as_view(), name="computer_list"),
 ]

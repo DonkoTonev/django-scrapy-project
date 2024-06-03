@@ -9,7 +9,7 @@ from scrapy.signalmanager import dispatcher
 import sqlite3
 
 
-class ComputerListView(View):
+class ComputerList(View):
     def get(self, request):
         processor = request.GET.get('processor', '')
         gpu = request.GET.get('gpu', '')
@@ -17,7 +17,7 @@ class ComputerListView(View):
         ram = request.GET.get('ram', '')
 
         conn = sqlite3.connect('desktop_data.db')
-        c = conn.cursor()
+        cursor = conn.cursor()
 
         query = "SELECT * FROM products WHERE 1=1"
         if processor:
@@ -29,8 +29,8 @@ class ComputerListView(View):
         if ram:
             query += f" AND ram LIKE '%{ram}%'"
 
-        c.execute(query)
-        results = c.fetchall()
+        cursor.execute(query)
+        results = cursor.fetchall()
         conn.close()
 
         data = []
@@ -45,32 +45,33 @@ class ComputerListView(View):
         return JsonResponse(data, safe=False)
 
 
-def scrape_desktop_bg(request):
-    data = []
-    success = {'status': None}
+class ScrapingView(View):
+    def get(self, request):
+        data = []
+        success = {'status': None}
 
-    def item_scraped(item, response, spider):
-        data.append(dict(item))
+        def item_scraped(item, response, spider):
+            data.append(dict(item))
 
-    def spider_closed(spider, reason):
-        if reason == 'finished':
-            success['status'] = 'success'
+        def spider_closed(spider, reason):
+            if reason == 'finished':
+                success['status'] = 'success'
+            else:
+                success['status'] = 'failed'
+
+        dispatcher.connect(item_scraped, signal=signals.item_scraped)
+        dispatcher.connect(spider_closed, signal=signals.spider_closed)
+
+        settings = get_project_settings()
+
+        configure_logging(settings)
+
+        process = CrawlerProcess(settings)
+
+        process.crawl(ComputerSpider)
+        process.start()
+
+        if success['status'] == 'success':
+            return JsonResponse({'message': 'Scraping completed successfully!'}, safe=False)
         else:
-            success['status'] = 'failed'
-
-    dispatcher.connect(item_scraped, signal=signals.item_scraped)
-    dispatcher.connect(spider_closed, signal=signals.spider_closed)
-
-    settings = get_project_settings()
-
-    configure_logging(settings)
-
-    process = CrawlerProcess(settings)
-
-    process.crawl(ComputerSpider)
-    process.start()
-
-    if success['status'] == 'success':
-        return JsonResponse({'message': 'Scraping completed successfully!'}, safe=False)
-    else:
-        return JsonResponse({'message': 'Scraping failed!'}, safe=False)
+            return JsonResponse({'message': 'Scraping failed!'}, safe=False)
