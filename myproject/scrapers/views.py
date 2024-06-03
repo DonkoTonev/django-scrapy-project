@@ -1,3 +1,4 @@
+from jsonschema import validate
 from django.http import JsonResponse
 from django.views.generic import View
 from scrapy.utils.project import get_project_settings
@@ -7,10 +8,25 @@ from scrapy import signals
 from scrapers.spiders.desktopbg_spider import ComputerSpider
 from scrapy.signalmanager import dispatcher
 import sqlite3
+import json
 
+schema = {
+    "type": "object",
+    "properties": {
+        "processor": {"type": "string"},
+        "gpu": {"type": "string"},
+        "motherboard": {"type": "string"},
+        "ram": {"type": "string"}
+    }
+}
 
 class ComputerList(View):
     def get(self, request):
+        try:
+            validate(instance=request.GET.dict(), schema=schema)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
         processor = request.GET.get('processor', '')
         gpu = request.GET.get('gpu', '')
         motherboard = request.GET.get('motherboard', '')
