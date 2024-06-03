@@ -29,7 +29,7 @@ The project consists of a Django web application and a Scrapy spider. The spider
 
 1. **Clone the Repository**:
    ```sh
-   git clone https://github.com/yourusername/django-scrapy-project.git
+   git clone https://github.com/DonkoTonev/django-scrapy-project.git
    cd django-scrapy-project
    ```
 
