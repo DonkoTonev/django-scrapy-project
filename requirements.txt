@@ -1,3 +1,4 @@
 Django
 Scrapy
 jsonschema
+sqlite3
